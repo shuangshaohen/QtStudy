@@ -20,7 +20,7 @@ Widget::Widget(QWidget *parent)
     model->setHeaderData(3, Qt::Horizontal, QObject::tr("Score"));
 
     ui->tableView->setModel(model);
-    setWindowTitle("Student");
+    setWindowTitle("QSqlTableModel");
 
     queryAll();
 }
