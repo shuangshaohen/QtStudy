@@ -10,6 +10,7 @@
 #include <QVariantList>
 #include <QSqlRecord>
 #include <QSqlTableModel>
+#include <QMenu>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -27,6 +28,9 @@ public:
 
     void queryAll();
 
+protected:
+    bool event(QEvent *event);
+
 private slots:
     void on_buttonAdd_clicked();
 
@@ -38,8 +42,27 @@ private slots:
 
     void on_buttonSearch_clicked();
 
+    void on_tableView_customContextMenuRequested(const QPoint &pos);
+
+    void TableNew();
+    void TableCut();
+    void TableCopy();
+    void TablePaste();
+    void TableInsert();
+    void TableDelete();
+
+    void TableSubmit();
+    void TableRevert();
 private:
     Ui::Widget *ui;
+    QMenu   *rightMenu;     //右键菜单
+    QAction *cutAction;     //剪切
+    QAction *copyAction;    //复制
+    QAction *pasteAction;   //粘贴
+    QAction *insertAction;  //插入
+    QAction *deleteAction;  //删除
+
+    QModelIndexList cutList;
 
     QSqlTableModel * model;
 };

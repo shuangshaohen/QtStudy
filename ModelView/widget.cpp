@@ -1,11 +1,26 @@
 ﻿#include "widget.h"
 #include "ui_widget.h"
+#include <QKeyEvent>
+#include <QClipboard>
 
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget)
 {
     ui->setupUi(this);
+
+    rightMenu = new QMenu(ui->tableView);
+    copyAction = new QAction("复制",this);
+    pasteAction = new QAction("粘贴",this);
+    cutAction = new QAction("剪切行",this);
+    insertAction = new QAction("插入行",this);
+    deleteAction = new QAction("删除行",this);
+
+    rightMenu->addAction(cutAction);
+    rightMenu->addAction(copyAction);
+    rightMenu->addAction(pasteAction);
+    rightMenu->addAction(insertAction);
+    rightMenu->addAction(deleteAction);
 
     createConnection();
 
@@ -22,7 +37,13 @@ Widget::Widget(QWidget *parent)
     ui->tableView->setModel(model);
     setWindowTitle("QSqlTableModel");
 
-    queryAll();
+    connect(cutAction,SIGNAL(triggered()),this,SLOT(TableCut()));
+    connect(copyAction,SIGNAL(triggered()),this,SLOT(TableCopy()));
+    connect(pasteAction,SIGNAL(triggered()),this,SLOT(TablePaste()));
+    connect(insertAction,SIGNAL(triggered()),this,SLOT(TableInsert()));
+    connect(deleteAction,SIGNAL(triggered()),this,SLOT(TableDelete()));
+
+    cutList.clear();
 }
 
 Widget::~Widget()
@@ -84,38 +105,58 @@ void Widget::queryAll()
 
 }
 
+bool Widget::event(QEvent *event)
+{
+    QWidget * fWidget = focusWidget();
+    if(ui->tableView != qobject_cast<QTableView *>(fWidget))
+        return QWidget::event(event);
+
+    if (event->type() == QEvent::KeyPress){
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->matches(QKeySequence::Paste)){
+            TablePaste();
+            event->accept();
+            return true;
+        }
+        else if(keyEvent->matches(QKeySequence::Copy)){
+            TableCopy();
+            event->accept();
+            return true;
+        }
+        else if(keyEvent->matches(QKeySequence::Save)){
+            TableSubmit();
+            event->accept();
+            return true;
+        }
+        else if(keyEvent->matches(QKeySequence::Undo)){
+            model->revertAll(); //取消所有动作
+            model->submitAll(); //提交动作
+            event->accept();
+            return true;
+        }
+    }
+
+    return QWidget::event(event);
+}
+
 void Widget::on_buttonAdd_clicked()
 {
-    //添加空记录
-    QSqlRecord record = model->record();    //获取空记录
-    //获取行号
-    int row = model->rowCount();
-    model->insertRecord(row,record);
+    TableNew();
 }
 
 void Widget::on_buttonConfirm_clicked()
 {
-    model->submitAll(); //提交动作
+    TableSubmit();
 }
 
 void Widget::on_buttonCancel_clicked()
 {
-    model->revertAll(); //取消所有动作
-    model->submitAll(); //提交动作
+    TableRevert();
 }
 
 void Widget::on_buttonDel_clicked()
 {
-    //获取选中的模型
-    QItemSelectionModel * sModel = ui->tableView->selectionModel();
-    //取出模型中的索引
-    QModelIndexList list = sModel->selectedRows();
-    //删除所有选中行
-    for(int i = 0; i < list.size(); i++)
-    {
-        model->removeRow(list.at(i).row());
-    }
-
+    TableDelete();
 }
 
 void Widget::on_buttonSearch_clicked()
@@ -128,4 +169,156 @@ void Widget::on_buttonSearch_clicked()
         model->setFilter(QString("name = '%1'").arg(name));
 
     model->select();
+}
+
+void Widget::on_tableView_customContextMenuRequested(const QPoint &pos)
+{
+    Q_UNUSED(pos);
+    //获取选中的模型
+    QItemSelectionModel * sModel = ui->tableView->selectionModel();
+    //取出模型中的索引
+    QModelIndexList list = sModel->selectedRows();
+
+    rightMenu->exec(cursor().pos());
+}
+
+void Widget::TableNew()
+{
+    //添加空记录
+    QSqlRecord record = model->record();    //获取空记录
+
+    //获取选中的模型
+    QItemSelectionModel * sModel = ui->tableView->selectionModel();
+    //取出模型中的索引
+    QModelIndexList list = sModel->selectedRows();
+
+    //获取行号
+    int row = model->rowCount();
+    if(list.isEmpty() == false)
+    {
+        int maxRow = 0;
+        for(int i = 0; i < list.size(); i++)
+        {
+            if(maxRow < list.at(i).row())
+                maxRow = list.at(i).row();
+        }
+        row = maxRow;
+    }
+    model->insertRecord(row,record);
+}
+
+void Widget::TableCut()
+{
+    cutList.clear();
+
+    //获取选中的模型
+    QItemSelectionModel * sModel = ui->tableView->selectionModel();
+    //取出模型中的索引
+    cutList = sModel->selectedRows();
+}
+
+void Widget::TableCopy()
+{
+    QString copied_text;
+    QModelIndexList current_selected_indexs = ui->tableView->selectionModel()->selectedIndexes();
+    if(current_selected_indexs.isEmpty())
+        return;
+
+    int current_row = current_selected_indexs.at(0).row();
+    for(int i = 0; i < current_selected_indexs.count(); i++){
+        if(current_row != current_selected_indexs.at(i).row()){
+            current_row = current_selected_indexs.at(i).row();
+            copied_text.append("\n");
+            copied_text.append(current_selected_indexs.at(i).data().toString());
+            continue;
+        }
+        if(0 != i){
+            copied_text.append("\t");
+        }
+        copied_text.append(current_selected_indexs.at(i).data().toString());
+    }
+    copied_text.append("\n");
+    QApplication::clipboard()->setText(copied_text);
+}
+
+void Widget::TablePaste()
+{
+    QString text_to_past = QApplication::clipboard()->text();
+    QStringList table_row_data_list = text_to_past.split("\n", QString::SkipEmptyParts);
+
+    QModelIndex current_index = ui->tableView->currentIndex();
+    for (int i = 0; i < model->rowCount() - current_index.row() && i < table_row_data_list.length(); ++i){
+        QStringList row_data_list = table_row_data_list.at(i).split("\t");
+        for(int k = 0; k < model->columnCount() - current_index.column() && k<row_data_list.length(); k++){
+            QModelIndex temp_index = current_index.sibling(i+current_index.row(), k+current_index.column());
+            model->setData(temp_index,row_data_list.at(k));
+        }
+    }
+}
+
+void Widget::TableInsert()
+{
+    //获取选中的模型
+    QItemSelectionModel * sModel = ui->tableView->selectionModel();
+    //取出模型中的索引
+    QModelIndexList list = sModel->selectedRows();
+
+    //获取行号
+    int row = ui->tableView->currentIndex().row();
+
+    if(cutList.isEmpty() == false)
+    {
+        for(int i = 0; i < cutList.size(); i++)
+        {
+            if(row == cutList.at(i).row())
+                continue;
+            else if(row > cutList.at(i).row())
+            {
+                QSqlRecord record = model->record(cutList.at(i).row());
+                model->insertRecord(row,record);
+                model->removeRow(cutList.at(i).row());
+            }
+            if(row < cutList.at(i).row())
+            {
+                QSqlRecord record = model->record(cutList.at(i).row());
+                model->removeRow(cutList.at(i).row());
+                model->insertRecord(row,record);
+            }
+
+        }
+
+        cutList.clear();
+    }
+}
+
+void Widget::TableDelete()
+{
+    //获取选中的模型
+    QItemSelectionModel * sModel = ui->tableView->selectionModel();
+    //取出模型中的索引
+    QModelIndexList list = sModel->selectedRows();
+    //删除所有选中行
+    for(int i = 0; i < list.size(); i++)
+    {
+        model->removeRow(list.at(i).row());
+    }
+}
+
+void Widget::TableSubmit()
+{
+    //    for (int i = 0; i < model->rowCount(); i++) {
+    //        model->setData(model->index(i,0),i);
+    //    }
+
+
+    if(!model->submitAll())
+    {
+        QMessageBox::warning(this,"保存失败",model->lastError().text());
+    }
+}
+
+void Widget::TableRevert()
+{
+    model->revertAll();
+    TableSubmit();
 }
