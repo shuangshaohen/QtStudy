@@ -21,10 +21,14 @@ void DataTable::printInfo()
     }
 }
 
-void DataTable::spinBoxValChanged(int val)
+void DataTable::valChanged(int val)
 {
-    int * p = (int *)QObject::sender()->property("point").toUInt();
-    *p = val;
+    QVariant intPoint = QObject::sender()->property("intPoint");
+    if(intPoint.isValid())
+    {
+        int * p = (int *)intPoint.toUInt();
+        *p = val;
+    }
 }
 
 void DataTable::update()
@@ -45,10 +49,10 @@ void DataTable::createSpinBox(int row)
     QSpinBox * pSpinBox = new QSpinBox();
     pSpinBox->setAlignment(Qt::AlignHCenter|Qt::AlignVCenter);
     pSpinBox->setRange(0,65535);
-    pSpinBox->setProperty("point",(uint)&m_datas[row]->id);
+    pSpinBox->setProperty("intPoint",(uint)&m_datas[row]->id);
     pSpinBox->setValue(m_datas[row]->id);
     pSpinBox->setSingleStep(2);
-    connect(pSpinBox, SIGNAL(valueChanged(int)),this,SLOT(spinBoxValChanged(int)));
+    connect(pSpinBox, SIGNAL(valueChanged(int)),this,SLOT(valChanged(int)));
 
     setCellWidget(row,EN_DATATABLE_COLUMN_ID,pSpinBox);
 }

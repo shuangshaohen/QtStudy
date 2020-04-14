@@ -48,7 +48,7 @@ public slots:
     void printInfo();
 
 protected slots:
-    void spinBoxValChanged(int val);
+    void valChanged(int val);
 private:
     QVector<tdsData *>  m_datas;
 
