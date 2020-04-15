@@ -16,12 +16,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    DirItem.cpp \
     datatable.cpp \
+    delegate.cpp \
     main.cpp \
     widget.cpp
 
 HEADERS += \
+    DirItem.h \
     datatable.h \
+    delegate.h \
     widget.h
 
 FORMS += \

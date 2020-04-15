@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QTableWidget>
 #include <QSpinBox>
+#include <QComboBox>
 
 struct tdsData
 {
@@ -11,6 +12,8 @@ struct tdsData
     QString name;
     float   val;
     bool    check;
+    int     dir;
+    QString sex;
 
     tdsData(int num)
     {
@@ -18,11 +21,14 @@ struct tdsData
         name = "Data" + QString::number(num);
         val = (float)num/10;
         check = false;
+        dir = 0;
+        sex = "男";
     }
 
     QString info()
     {
-        QString info = QString("id = %1, name = %2, val = %3, check = %4 ").arg(id).arg(name).arg(val).arg(check);
+        QString info = QString("id = %1, name = %2, val = %3, check = %4 , dir = %5, sex = %6")
+                .arg(id).arg(name).arg(val).arg(check).arg(dir).arg(sex.toUtf8().data());
         return info;
     }
 };
@@ -30,14 +36,6 @@ struct tdsData
 class DataTable : public QTableWidget
 {
     Q_OBJECT
-
-    enum _EN_DATATABLE_COLUMN_
-    {
-        EN_DATATABLE_COLUMN_ID = 0,
-        EN_DATATABLE_COLUMN_NAME,
-        EN_DATATABLE_COLUMN_VAL,
-        EN_DATATABLE_COLUMN_CHECK,
-    };
 
 public:
     explicit DataTable(QWidget *parent = nullptr);
@@ -49,12 +47,14 @@ public slots:
 
 protected slots:
     void valChanged(int val);
+    void strChanged(const QString &text);
 private:
     QVector<tdsData *>  m_datas;
 
     void    update();
 
     void    createSpinBox(int row);
+    void    createComboBox(int row);
 };
 
 #endif // DATATABLE_H
