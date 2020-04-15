@@ -10,7 +10,7 @@ struct tdsData
 {
     int     id;
     QString name;
-    float   val;
+    double  val;
     bool    check;
     int     dir;
     QString sex;
@@ -45,9 +45,13 @@ signals:
 public slots:
     void printInfo();
 
+    void debugInfo();
+
 protected slots:
     void valChanged(int val);
     void strChanged(const QString &text);
+
+    void checkBoxChanged(int state);
 private:
     QVector<tdsData *>  m_datas;
 

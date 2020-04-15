@@ -1,7 +1,9 @@
-#include "delegate.h"
+﻿#include "delegate.h"
 #include <QComboBox>
 #include <QSpinBox>
+#include <QDoubleSpinBox>
 #include <QLineEdit>
+//#include <QCheckBox>
 #include <QDebug>
 
 Delegate::Delegate(QObject *parent)
@@ -29,13 +31,28 @@ QSize Delegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &
 QWidget *Delegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option,
                                                    const QModelIndex &index) const
 {
-    if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_ID)
+    if ((index.isValid() && index.column() == EN_DATATABLE_COLUMN_ID)
+            ||(index.isValid() && index.column() == EN_DATATABLE_COLUMN_DIR))
     {
         QSpinBox *editor = new QSpinBox(parent);
         editor->setAlignment(Qt::AlignHCenter|Qt::AlignVCenter);
         editor->installEventFilter(const_cast<Delegate *>(this));
         return editor;
     }
+    else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_VAL)
+    {
+        QDoubleSpinBox *editor = new QDoubleSpinBox(parent);
+        editor->setAlignment(Qt::AlignHCenter|Qt::AlignVCenter);
+        editor->installEventFilter(const_cast<Delegate *>(this));
+        return editor;
+    }
+//    else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_CHECK)
+//    {
+//        QCheckBox *editor = new QCheckBox(parent);
+//        editor->setText("检查");
+//        editor->installEventFilter(const_cast<Delegate *>(this));
+//        return editor;
+//    }
     else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_NAME)
     {
         QLineEdit *editor = new QLineEdit(parent);
@@ -62,9 +79,39 @@ void Delegate::setEditorData(QWidget *editor, const QModelIndex &index) const
     {
         int value = index.model()->data(index, Qt::EditRole).toInt();
         QSpinBox *box = static_cast<QSpinBox *>(editor);
-        box->setValue(value);
         box->setRange(0,65535);
         box->setSingleStep(1);
+        box->setValue(value);
+    }
+    else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_VAL)
+    {
+        double value = index.model()->data(index, Qt::EditRole).toDouble();
+        QDoubleSpinBox *box = static_cast<QDoubleSpinBox *>(editor);
+        box->setValue(value);
+        box->setSingleStep(0.01);
+    }
+//    else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_CHECK)
+//    {
+//        bool value = index.model()->data(index, Qt::EditRole).toBool();
+//        QCheckBox *box = static_cast<QCheckBox *>(editor);
+//        box->setChecked(value);
+//    }
+    else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_DIR)
+    {
+        int value = index.model()->data(index, Qt::EditRole).toInt();
+        QSpinBox *box = static_cast<QSpinBox *>(editor);
+        box->setRange(-9999,9999);
+        box->setSingleStep(1);
+        box->setValue(value);
+//        QVariant point = index.model()->data(index,Qt::UserRole+1).toUInt();
+//        if(point.isValid())
+//        {
+//            int * p = (int *)point.toUInt();
+//            if(nullptr != p)
+//            {
+//                box->setValue(*p);
+//            }
+//        }
     }
     else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_NAME)
     {
@@ -102,6 +149,57 @@ void Delegate::setModelData(QWidget *editor, QAbstractItemModel *model,
             if(nullptr != p)
                 *p = box->value();
         }
+    }
+    else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_VAL)
+    {
+        QDoubleSpinBox *box = static_cast<QDoubleSpinBox *>(editor);
+        model->setData(index, box->value());
+        QVariant point = model->data(index,Qt::UserRole+1).toUInt();
+        if(point.isValid())
+        {
+            double * p = (double *)point.toUInt();
+            if(nullptr != p)
+                *p = box->value();
+        }
+    }
+//    else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_CHECK)
+//    {
+//        QCheckBox *box = static_cast<QCheckBox *>(editor);
+//        model->setData(index, box->isChecked());
+//        QVariant point = model->data(index,Qt::UserRole+1).toUInt();
+//        if(point.isValid())
+//        {
+//            bool * p = (bool *)point.toUInt();
+//            if(nullptr != p)
+//                *p = box->isChecked();
+//        }
+//    }
+    else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_DIR)
+    {
+        QSpinBox *box = static_cast<QSpinBox *>(editor);
+        model->setData(index, box->value(),Qt::EditRole);
+//        qDebug() <<"model setData box = " <<box->value();
+
+        QVariant point = model->data(index,Qt::UserRole+1).toUInt();
+        if(point.isValid())
+        {
+            int * p = (int *)point.toUInt();
+            if(nullptr != p)
+            {
+//                qDebug() <<"set dir val = " <<box->value();
+                *p = box->value();
+            }
+        }
+
+//        if(box->value() > 0)
+//            model->setData(index,QString("盈%1").arg(box->value()),Qt::DisplayRole);
+//        else if(box->value()< 0)
+//            model->setData(index,QString("亏%1").arg(-1*box->value()),Qt::DisplayRole);
+//        else
+//            model->setData(index,QString("平"),Qt::DisplayRole);
+
+//        qDebug() << "DisplayRole value = " << model->data(index,Qt::DisplayRole).toString();
+//        qDebug() << "EditRole value = " << model->data(index,Qt::EditRole).toString();
     }
     else if (index.isValid() && index.column() == EN_DATATABLE_COLUMN_NAME)
     {

@@ -17,11 +17,12 @@ Widget::Widget(QWidget *parent)
     m_buttonPrint->setText("打印");
     m_buttonPrint->move(900,300);
 
+    QPushButton * button = new QPushButton(this);
+    button->setText("调试");
+    button->move(900,500);
+
     connect(m_buttonPrint,SIGNAL(clicked()),m_table,SLOT(printInfo()));
-
-
-
-
+    connect(button,SIGNAL(clicked()),m_table,SLOT(debugInfo()));
 }
 
 Widget::~Widget()
